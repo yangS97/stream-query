@@ -140,7 +140,7 @@ class SteamTest {
 
 
 
-    List<Integer> newList = asList(1, 3, 2); //Function入参: t,k    返回出参 k,t    入参1,2,3  返回map<>
+    List<Integer> newList = asList(1, 3, 2); //Function入参: t,k    返回出参 k,t    入参1,2,3    返回map<>
     Map<String, Integer> bothMap = Steam.of(newList).toMap(String::valueOf);
     Assertions.assertEquals(
             new HashMap<String, Integer>() {
