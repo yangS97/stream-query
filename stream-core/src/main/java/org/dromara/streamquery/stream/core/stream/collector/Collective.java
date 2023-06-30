@@ -1215,11 +1215,11 @@ public class Collective {
       BinaryOperator<U> mergeFunction,
       Supplier<M> mapSupplier) {
     BiConsumer<M, T> accumulator =
-        (map, element) -> {
-          Opp<? extends K> keyOpp = Opp.of(element).map(keyMapper);
-          U value =
-              Opp.of(element)
-                  .map(valueMapper)
+        (map, element) -> {       // 1,3,2
+          Opp<? extends K> keyOpp = Opp.of(element).map(keyMapper);  // key : 1 -> "1"
+          U value = // 获取value
+              Opp.of(element) //1
+                  .map(valueMapper)//1
                   .map(
                       newValue ->
                           keyOpp

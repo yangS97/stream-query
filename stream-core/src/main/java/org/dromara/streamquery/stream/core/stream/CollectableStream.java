@@ -147,7 +147,9 @@ public interface CollectableStream<T> extends Stream<T> {
    * @return map
    */
   default <K, U> Map<K, U> toMap(
-      Function<? super T, ? extends K> keyMapper, Function<? super T, ? extends U> valueMapper) {
+      Function<? super T, ? extends K> keyMapper,
+      Function<? super T, ? extends U> valueMapper)
+  {
     return toMap(keyMapper, valueMapper, (l, r) -> r);
   }
 

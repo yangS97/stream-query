@@ -69,7 +69,8 @@ class SteamTest {
   void testToCollection() {
     List<Integer> list = asList(1, 2, 3);
     List<String> toCollection = Steam.of(list).map(String::valueOf).toCollection(LinkedList::new);
-    Assertions.assertEquals(asList("1", "2", "3"), toCollection);
+    List<String> toCollection2 = Steam.of(list).map(String::valueOf).toCollection(ArrayList::new);
+    Assertions.assertEquals(asList("1", "2", "3"), toCollection2);
   }
 
   @Test
@@ -125,7 +126,7 @@ class SteamTest {
 
   @Test
   void testToMap() {
-    List<Integer> list = asList(1, 2, 3);
+    List<Integer> list = asList(1, 2, 3); //Function入参: t,k    返回出参 k,t    入参1,2,3  返回map<>
     Map<String, Integer> identityMap = Steam.of(list).toMap(String::valueOf);
     Assertions.assertEquals(
         new HashMap<String, Integer>() {
@@ -136,6 +137,20 @@ class SteamTest {
           }
         },
         identityMap);
+
+
+
+    List<Integer> newList = asList(1, 3, 2); //Function入参: t,k    返回出参 k,t    入参1,2,3  返回map<>
+    Map<String, Integer> bothMap = Steam.of(newList).toMap(String::valueOf);
+    Assertions.assertEquals(
+            new HashMap<String, Integer>() {
+              {
+                put("1", 1);
+                put("2", 2);
+                put("3", 3);
+              }
+            },
+            bothMap);
   }
 
   @Test
