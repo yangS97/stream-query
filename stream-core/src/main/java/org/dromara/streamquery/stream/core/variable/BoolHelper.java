@@ -14,25 +14,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.dromara.streamquery.stream.plugin.mybatisplus;
+package org.dromara.streamquery.stream.core.variable;
 
-import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
-import org.dromara.streamquery.stream.plugin.mybatisplus.engine.annotation.EnableMybatisPlusPlugin;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.Bean;
+import java.util.Arrays;
+import java.util.List;
 
 /**
- * MybatisPlusTestApplication less Create Retrieve Update Delete
+ * BoolHelper class.
  *
- * @author VampireAchao Cizai_
- * @since 2022/5/21
+ * @author VampireAchao
+ * @since 2023-07-28
  */
-@SpringBootApplication
-@EnableMybatisPlusPlugin("org.dromara.streamquery.stream.plugin.mybatisplus.pojo.po")
-public class MybatisPlusTestApplication {
+public class BoolHelper {
 
-  @Bean
-  public MybatisPlusInterceptor mybatisPlusInterceptor() {
-    return new MybatisPlusInterceptor();
+  private BoolHelper() {
+    /* Do not new me! */
+  }
+
+  public static final List<Object> FALSY_VALUES =
+      Arrays.asList(false, 0, -0, 0L, 0.0D, -0.0D, "", null);
+
+  public static boolean isFalsy(Object value) {
+    if (FALSY_VALUES.contains(value)) {
+      return true;
+    }
+    if (value instanceof Double) {
+      return Double.isNaN((Double) value);
+    }
+    return false;
+  }
+
+  public static boolean isTruthy(Object value) {
+    return !isFalsy(value);
   }
 }

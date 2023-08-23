@@ -14,25 +14,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.dromara.streamquery.stream.plugin.mybatisplus;
+package org.dromara.streamquery.stream.plugin.mybatisplus.engine.configuration;
 
-import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
-import org.dromara.streamquery.stream.plugin.mybatisplus.engine.annotation.EnableMybatisPlusPlugin;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.Bean;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * MybatisPlusTestApplication less Create Retrieve Update Delete
- *
- * @author VampireAchao Cizai_
- * @since 2022/5/21
+ * @author VampireAchao
+ * @since 2023/7/14 18:06
  */
-@SpringBootApplication
-@EnableMybatisPlusPlugin("org.dromara.streamquery.stream.plugin.mybatisplus.pojo.po")
-public class MybatisPlusTestApplication {
+@ConfigurationProperties(prefix = "stream-query.mybatis-plus")
+public class StreamPluginProperties {
 
-  @Bean
-  public MybatisPlusInterceptor mybatisPlusInterceptor() {
-    return new MybatisPlusInterceptor();
+  private boolean safeMode;
+
+  public boolean isSafeMode() {
+    return safeMode;
+  }
+
+  public void setSafeMode(boolean safeMode) {
+    this.safeMode = safeMode;
   }
 }
