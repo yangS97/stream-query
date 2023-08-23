@@ -246,6 +246,7 @@ public class Steam<T> extends AbstractStreamWrapper<T, Steam<T>>
     return of(iterable, false);
   }
 
+
   /**
    * 通过传入的{@link java.lang.Iterable}创建流
    *
@@ -399,6 +400,7 @@ public class Steam<T> extends AbstractStreamWrapper<T, Steam<T>>
   public <R> Steam<R> flatMap(Function<? super T, ? extends Stream<? extends R>> mapper) {
     return new Steam<>(stream.flatMap(mapper));
   }
+
 
   /**
    * 扩散流操作，可能影响流元素个数，将原有流元素执行mapper操作，返回多个流所有元素组成的流，操作带下标，并行流时下标永远为-1 这是一个无状态中间操作

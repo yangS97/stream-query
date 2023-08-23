@@ -184,8 +184,11 @@ public interface CollectableStream<T> extends Stream<T> {
    * @return map
    */
   default <K, U> Map<K, U> toUnmodifiableMap(
-      Function<? super T, ? extends K> keyMapper, Function<? super T, ? extends U> valueMapper) {
+      Function<? super T, ? extends K> keyMapper,
+      Function<? super T, ? extends U> valueMapper) {
+
     Map<K, U> result = toMap(keyMapper, valueMapper);
+
     return Collections.unmodifiableMap(result);
   }
 
