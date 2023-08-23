@@ -14,27 +14,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.dromara.streamquery.stream.plugin.mybatisplus.pojo.po;
+package org.dromara.streamquery.stream.plugin.mybatisplus.issue.gitee.issue17BSNV;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
-import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import org.dromara.streamquery.stream.plugin.mybatisplus.engine.mapper.IGenerateMapper;
 
 import java.time.LocalDateTime;
 
-/**
- * UserInfo
- *
- * @author VampireAchao Cizai_
- * @since 2022/5/21
- */
 @Data
-@TableName("user_info")
-public class UserInfo implements IGenerateMapper {
-
+@Table(value = "user_info")
+public class UserInfoWithTableAnnotation implements IGenerateMapper {
   private static final long serialVersionUID = -7219188882388819210L;
 
   @TableId(value = "id", type = IdType.AUTO)

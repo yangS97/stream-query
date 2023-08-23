@@ -18,32 +18,27 @@ package org.dromara.streamquery.stream.plugin.mybatisplus.pojo.po;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableLogic;
-import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import org.dromara.streamquery.stream.plugin.mybatisplus.engine.mapper.IGenerateMapper;
+import org.dromara.streamquery.stream.plugin.mybatisplus.issue.gitee.issue17BSNV.Table;
 
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 /**
- * UserInfo
- *
- * @author VampireAchao Cizai_
- * @since 2022/5/21
+ * @author Cason
+ * @since 2023-06-27 20:13
  */
 @Data
-@TableName("user_info")
-public class UserInfo implements IGenerateMapper {
-
+@Table("product_info")
+public class ProductInfo implements IGenerateMapper {
   private static final long serialVersionUID = -7219188882388819210L;
 
   @TableId(value = "id", type = IdType.AUTO)
   private Long id;
 
-  private String name;
-  private Integer age;
-  private String email;
+  private String productName;
 
-  @TableLogic(value = "'2001-01-01 00:00:00'", delval = "NOW()")
-  private LocalDateTime gmtDeleted;
+  private BigDecimal productPrice;
+
+  private String tenantId;
 }

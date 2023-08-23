@@ -16,6 +16,7 @@
  */
 package org.dromara.streamquery.stream.plugin.mybatisplus;
 
+import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
@@ -23,6 +24,8 @@ import com.baomidou.mybatisplus.core.metadata.TableInfo;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.core.override.MybatisMapperProxy;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.inner.InnerInterceptor;
+import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.toolkit.SqlHelper;
 import com.baomidou.mybatisplus.test.autoconfigure.MybatisPlusTest;
@@ -50,7 +53,12 @@ import java.util.*;
  * @since 2022-05-03
  */
 @MybatisPlusTest
-class DatabaseTest {
+class DatabaseTest extends InterceptorTest {
+
+  @Override
+  public List<InnerInterceptor> interceptors() {
+    return Lists.of(new PaginationInnerInterceptor(DbType.H2));
+  }
 
   @Test
   void testExecute() {
