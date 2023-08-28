@@ -49,6 +49,12 @@ class SteamTest {
 
   @Test
   void testOf() {
+    //Steam.of()实际调用
+    //return Opp.of(iterable)
+    //        .map(Iterable::spliterator)
+    //        .map(spliterator -> StreamSupport.stream(spliterator, parallel))
+    //        .map(Steam::new)
+    //        .orElseGet(Steam::empty);
     Assertions.assertEquals(3, Steam.of(asList(1, 2, 3), true).count());
     Assertions.assertEquals(3, Steam.of(1, 2, 3).count());
     Assertions.assertEquals(3, Steam.of(Stream.builder().add(1).add(2).add(3).build()).count());
@@ -57,6 +63,7 @@ class SteamTest {
 
   @Test
   void testSplit() {
+    //split()方法,即使入参是null,也不会报错,会返回一个空的stream对象
     List<String> list1 = Steam.split(null, ",").toList();
     System.out.println("list1 = " + list1);
 
@@ -73,10 +80,14 @@ class SteamTest {
 
   @Test
   void testToCollection() {
+    //Iterable::spliterator 是 Java 8 中的一个方法，它返回一个 Spliterator 对象，
+    // 用于遍历 Iterable 实例中的元素。Spliterator 是一个可分割迭代器，可以将其分割成多个部分并在多个线程中并行处理。
+    // 这个方法的作用是将 Iterable 实例转换为 Spliterator 实例，以便可以使用 Spliterator 的方法对其进行操作。
+    // 例如，可以使用 tryAdvance 方法遍历 Spliterator 实例中的元素，或者使用 forEachRemaining 方法对其进行消费。
     List<Integer> list02 = asList(1, 2, 3);
     Steam<Integer> get = Opp.of(list02)
             .map(Iterable::spliterator)
-            .map(spliterator -> StreamSupport.stream(spliterator, false))
+            .map(spliterator -> StreamSupport.stream(spliterator, false))  //将一个 Spliterator 对象映射为一个 Stream 对象
             .map(Steam::new)
             .orElse(Steam.of(1));
 
@@ -100,9 +111,13 @@ class SteamTest {
     Assertions.assertEquals(asList("1", "2", "3"), toList);
   }
 
+  /**
+   * 转换成不可修改的List
+   */
   @Test
   void testToUnmodifiableList() {
     List<Integer> list = Steam.of(1, 2, 3).toUnmodifiableList();
+    list.remove(0);
     Assertions.assertThrows(UnsupportedOperationException.class, () -> list.remove(0));
   }
 
@@ -123,6 +138,7 @@ class SteamTest {
   void testToZip() {
     List<Integer> orders = asList(1, 2, 3);
     List<String> list = asList("dromara", "hutool", "sweet");
+    //如果是串行流, 实际是在调用toMap()方法
     Map<Integer, String> toZip = Steam.of(orders).toZip(list);
     Assertions.assertEquals(
         new HashMap<Integer, String>() {
@@ -135,6 +151,10 @@ class SteamTest {
         toZip);
   }
 
+  /**
+   * 拼接字符串, 方便添加符号,调整成我们想要的样子
+   * 例如:  asList(1, 2, 3) -->   (1,2,3)
+   */
   @Test
   void testJoin() {
     List<Integer> list = asList(1, 2, 3);
@@ -144,10 +164,21 @@ class SteamTest {
     Assertions.assertEquals("(1,2,3)", Steam.of(list).join(",", "(", ")"));
   }
 
+  /**
+   * 集合转Map,类似于Collection的toMap()方法,但是对其底层进行了优化，
+   * 防止了重复key的异常和当value为null时的NPE异常
+   * 原生调用的弊端:   key重复 --> IllegalStateException: Duplicate key
+   *                 value为null -->  NPE异常
+   */
   @Test
   void testToMap() {
-    List<Integer> list = asList(1, 2, 3); //Function入参: t,k    返回出参 k,t    入参1,2,3  返回map<>
+    List<Integer> list = asList(1, 2, 3);
+    Map<Integer, String> map = Steam.of(list).toMap(Function.identity(), String::valueOf);
+    System.out.println("map = " + map);
+
+    //Function入参: t,k    返回出参 k,t    入参1,2,3  返回map<> "1" : 1
     Map<String, Integer> identityMap = Steam.of(list).toMap(String::valueOf);
+    System.out.println("identityMap = " + identityMap);
     Assertions.assertEquals(
         new HashMap<String, Integer>() {
           {
@@ -161,6 +192,7 @@ class SteamTest {
 
 
     List<Integer> newList = asList(1, 3, 2); //Function入参: t,k    返回出参 k,t    入参1,2,3    返回map<>
+    //toMap()方法里面有BinaryOperator, 会自动给升序排序 !!!
     Map<String, Integer> bothMap = Steam.of(newList).toMap(String::valueOf);
     Assertions.assertEquals(
             new HashMap<String, Integer>() {
@@ -184,6 +216,10 @@ class SteamTest {
     Assertions.assertThrows(UnsupportedOperationException.class, () -> map2.remove(1));
   }
 
+  /**
+   * 通过给定分组依据进行分组
+   * 分组也挺好用, 比如查询carDeductionRecord, 然后根据etcTypeId进行分组
+   */
   @Test
   void testGroup() {
     List<Integer> list = asList(1, 2, 3);
@@ -199,6 +235,10 @@ class SteamTest {
         group);
   }
 
+  /**
+   * 根据给定判断条件分组:  分成true,false两组     可以筛选出来符合条件的, 和所有不符合条件的
+   * group()是根据分组条件分组
+   */
   @Test
   void testPartition() {
     // 是否为奇数
@@ -218,13 +258,29 @@ class SteamTest {
     Assertions.assertEquals(1, map2.get(Boolean.FALSE).size());
   }
 
+  /**
+   * 返回无限串行无序流 其中每一个元素都由给定的Supplier生成
+   * 适用场景在一些生成常量流、随机元素等   应该是可以用于测试吧
+   */
   @Test
   void testGenerate() {
     Random random = new SecureRandom();
     Steam<Integer> limit = Steam.generate(() -> random.nextInt(10)).limit(10);
-    Assertions.assertEquals(Boolean.TRUE, limit.allMatch(v -> v >= 0 && v < 10));
+    limit.forEach(System.out::println);
+    //Assertions.assertEquals(Boolean.TRUE, limit.allMatch(v -> v >= 0 && v < 10));
+
+    Random random1 = new Random();
+    Steam.generate(()-> random1.nextInt(100)).limit(10).forEach(System.out::println);
   }
 
+  /**
+   * filterContains : 过滤同类型集合中某一操作相同值的数据 filter(Function, Object)
+   * filterContains(Student::getAge, others)
+   * Student::getAge  -->  对同类型数据的条件限定
+   * others  -->  同类型数据
+   *
+   * 最后stream过滤出来满足条件的数据!
+   */
   @Test
   void testFilterIter() {
     List<Student> list =
@@ -250,6 +306,11 @@ class SteamTest {
     }
   }
 
+  /**
+   * 返回与指定函数将元素作为参数执行的结果组成的流，操作带下标:  可以用来微调数据
+   * 形参:  mapper – 指定的函数
+   * 返回值: 返回叠加操作后的流
+   */
   @Test
   void testMapIdx() {
     List<String> list = asList("dromara", "hutool", "sweet");
@@ -257,6 +318,10 @@ class SteamTest {
     Assertions.assertEquals(asList("1.dromara", "2.hutool", "3.sweet"), mapIndex);
   }
 
+  /**
+   * 扩散流操作，可能影响流元素个数，将原有流元素执行mapper操作，返回多个流所有元素组成的流，  ??
+   * 操作带一个方法，调用该方法可增加元素 这是一个无状态中间操作
+   */
   @Test
   void testMapMulti() {
     List<Integer> list = asList(1, 2, 3);
@@ -273,6 +338,10 @@ class SteamTest {
     Assertions.assertEquals(asList(1, 2, 2, 3), mapMulti);
   }
 
+  /**
+   * 返回一个具有去重特征的流 非并行流(顺序流)下对于重复元素，  串行流就是顺序流吗?
+   * 保留遇到顺序中最先出现的元素，并行流情况下不能保证具体保留哪一个 这是一个有状态中间操作
+   */
   @Test
   void testDistinct() {
     List<Integer> list = asList(1, 2, 2, 3);
@@ -280,6 +349,11 @@ class SteamTest {
     Assertions.assertEquals(asList(1, 2, 3), distinctBy);
   }
 
+  /**
+   * 对流里面的每一个元素执行一个操作，操作带下标，并行流时下标永远为-1 这是一个终端操作
+   *
+   * 这个貌似很有用嘛  可以对流里面每一个元素进行处理?
+   */
   @Test
   void testForeachIdx() {
     List<String> list = asList("dromara", "hutool", "sweet");
@@ -288,6 +362,11 @@ class SteamTest {
     Assertions.assertEquals(asList("1.dromara", "2.hutool", "3.sweet"), builder.build().toList());
   }
 
+  /**
+   * 对流里面的每一个元素按照顺序执行一个操作，操作带下标，并行流时下标永远为-1 这是一个终端操作
+   *
+   * 跟forEachIdx的区别是   forEachIdx: 无序处理,    forEachOrderedIdx : 有序处理
+   */
   @Test
   void testForEachOrderedIdx() {
     List<String> list = asList("dromara", "hutool", "sweet");
@@ -296,6 +375,10 @@ class SteamTest {
     Assertions.assertEquals(asList("1.dromara", "2.hutool", "3.sweet"), builder.build().toList());
   }
 
+  /**
+   * 扩散流操作，可能影响流元素个数，将原有流元素执行mapper操作，
+   * 返回多个流所有元素组成的流，操作带下标，并行流时下标永远为-1 这是一个无状态中间操作   ???
+   */
   @Test
   void testFlatIdx() {
     List<String> list = asList("dromara", "hutool", "sweet");
@@ -304,9 +387,15 @@ class SteamTest {
     Assertions.assertEquals(asList("1.dromara", "2.hutool", "3.sweet"), mapIndex);
   }
 
+  /**
+   * 扩散流操作，可能影响流元素个数，将原有流元素执行mapper操作，返回多个流所有元素组成的流 这是一个无状态中间操作
+   * 例如，将users里所有user的id和parentId组合在一起，形成一个新的流:
+   *  Steam<Long> ids = Steam.of(users).flatMap(user -> Steam.of(user.getId(), user.getParentId()));
+   */
   @Test
   void testFlatIter() {
     List<Integer> list = asList(1, 2, 3);
+    // flat实际调用:  return flatMap(w -> Opp.of(w).map(mapper).map(Steam::of).orElseGet(Steam::empty));
     List<Integer> flatMapIter = Steam.of(list).<Integer>flat(e -> null).toList();
     Assertions.assertEquals(Collections.emptyList(), flatMapIter);
   }
@@ -314,10 +403,22 @@ class SteamTest {
   @Test
   void testFilter() {
     List<Integer> list = asList(1, 2, 3);
+    //实际调用: return filter(e -> Objects.equals(Opp.of(e).map(mapper).get(), value));
+    //写法更优雅些?  更灵活些吧
     List<Integer> filterIndex = Steam.of(list).filter(String::valueOf, "1").toList();
     Assertions.assertEquals(singletonList(1), filterIndex);
+
+    List<Integer> list1 = Steam.of(list).filter(s -> s.toString().equals("1")).toList();
+    System.out.println("list1 = " + list1);
+
+    List<Integer> list2 = Steam.of(list).filter(String::valueOf, "1").toList();
   }
 
+  /**
+   * 过滤元素，返回与指定断言匹配的元素组成的流，断言带下标
+   *
+   * 提供更灵活的使用吧
+   */
   @Test
   void testFilterIdx() {
     List<String> list = asList("dromara", "hutool", "sweet");
@@ -325,13 +426,21 @@ class SteamTest {
     Assertions.assertEquals(asList("dromara", "hutool"), filterIndex);
   }
 
+  /**
+   * 过滤掉为null的元素
+   * 挺实用
+   */
   @Test
   void testNonNull() {
     List<Integer> list = asList(1, null, 2, 3);
     List<Integer> nonNull = Steam.of(list).nonNull().toList();
     Assertions.assertEquals(asList(1, 2, 3), nonNull);
+    System.out.println("nonNull = " + nonNull);
   }
 
+  /**
+   * nonNull  这个小方法还是挺实用的
+   */
   @Test
   void testNonNullMapping() {
     List<Student> original =
@@ -340,9 +449,9 @@ class SteamTest {
             Student.builder().name("阿超").age(21).build());
     List<Student> nonNull =
         Steam.of(original)
-            .push(Student.builder() /*.name(null)*/.age(21).build())
-            .unshift(Student.builder().name("阿郎") /*.age(null)*/.build())
-            .nonNull(Student::getName)
+            .push(Student.builder() /*.name(null)*/.age(21).build())   //与给定元素组成的流合并成新的流, 在末尾
+            .unshift(Student.builder().name("阿郎") /*.age(null)*/.build())  //与给定元素组成的流合并成新的流,在头部
+            .nonNull(Student::getName)  //nonNull  方法可以带参数, 指定过滤对应条件的
             .nonNull(Student::getAge)
             .toList();
     Assertions.assertEquals(original, nonNull);
@@ -374,6 +483,11 @@ class SteamTest {
     Assertions.assertEquals(asList(3, 2, 1, 2, 3), lastUnshift);
   }
 
+  /**
+   * at :  获取流中指定下标的元素，如果是负数，则从最后一个开始数起
+   *
+   * 实用小工具 ?
+   */
   @Test
   void testAt() {
     List<Integer> list = asList(1, 2, 3);
@@ -396,13 +510,23 @@ class SteamTest {
     Assertions.assertEquals(asList(1, 2, 3), Steam.of(list).splice(-2, 2, 2, 3).toList());
   }
 
+  /**
+   * 获取与给定断言匹配的第一个元素,带断言函数入参!
+   * 功能更强大, 更灵活
+   */
   @Test
   void testFindFirst() {
     List<Integer> list = asList(1, 2, 3);
     Optional<Integer> find = Steam.of(list).findFirst(Objects::nonNull);
     Assertions.assertEquals(1, find.orElse(null));
+
+    Integer i = Steam.of(list).findFirst(num -> num > 2).orElse(-1);
+    System.out.println("i = " + i);
   }
 
+  /**
+   * 获取索引, 作用不大吧?
+   */
   @Test
   void testFindFirstIdx() {
     List<Integer> list = asList(null, 2, 3);
@@ -434,6 +558,10 @@ class SteamTest {
     Assertions.assertEquals(asList(3, 2, 1), reverse);
   }
 
+  /**
+   * toZip是两个list流组合成一个map流返回
+   * zip是两个list流组合成一个list流返回
+   */
   @Test
   void testZip() {
     List<Integer> orders = asList(1, 2, 3);
@@ -442,6 +570,9 @@ class SteamTest {
     Assertions.assertEquals(asList("1.dromara", "2.hutool", "3.sweet"), zip);
   }
 
+  /**
+   * 按指定长度切分为几个流
+   */
   @Test
   void testListSplit() {
     List<Integer> list = asList(1, 2, 3, 4, 5);
@@ -449,6 +580,12 @@ class SteamTest {
     Assertions.assertEquals(asList(asList(1, 2), asList(3, 4), singletonList(5)), lists);
   }
 
+  /**
+   * splitList 实际调用
+   * return split(batchSize).map(Steam::toList);
+   *
+   * 等于对split方法的进一步封装
+   */
   @Test
   void testSplitList() {
     List<Integer> list = asList(1, 2, 3, 4, 5);
@@ -456,9 +593,15 @@ class SteamTest {
     Assertions.assertEquals(asList(asList(1, 2), asList(3, 4), singletonList(5)), lists);
   }
 
+  /**
+   * log应该不怎么用的上吧
+   */
   @Test
   void testLog() {
     List<Integer> list = asList(0, 1, 2);
     Assertions.assertEquals(asList(1, 2, 3), Steam.of(list).map(i -> i + 1).log().toList());
+
+    List<Integer> logList = Steam.of(list).map(i -> i + 1).log().toList();
+    System.out.println("logList = " + logList);
   }
 }

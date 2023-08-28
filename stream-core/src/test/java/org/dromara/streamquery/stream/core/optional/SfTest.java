@@ -34,6 +34,7 @@ class SfTest {
 
   @Test
   void testOf() {
+    // scope-functions --> sf: 作用域
     Sf<String> stringSf = Sf.of(Z_VERIFY_NAME);
     Assertions.assertEquals("风向标", stringSf.get());
   }
@@ -45,6 +46,7 @@ class SfTest {
 
   @Test
   void testMayOfColl() {
+    // return ofColl(value).mayTakeIf(c -> Steam.of(c).anyMatch(Objects::nonNull));
     Assertions.assertTrue(Sf.mayColl(Arrays.asList(null, null, null)).isEmpty());
   }
 

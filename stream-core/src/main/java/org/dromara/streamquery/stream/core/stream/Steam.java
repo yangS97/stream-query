@@ -422,7 +422,7 @@ public class Steam<T> extends AbstractStreamWrapper<T, Steam<T>>
     }
   }
 
-  /**
+    /**
    * 扩散流操作，可能影响流元素个数，将原有流元素执行mapper操作，返回多个流所有元素组成的流 这是一个无状态中间操作
    * 例如，将users里所有user的id和parentId组合在一起，形成一个新的流:
    *
@@ -512,7 +512,7 @@ public class Steam<T> extends AbstractStreamWrapper<T, Steam<T>>
     }
   }
 
-  /**
+    /**
    * 对流里面的每一个元素按照顺序执行一个操作，操作带下标，并行流时下标永远为-1 这是一个终端操作
    *
    * @param action 操作
