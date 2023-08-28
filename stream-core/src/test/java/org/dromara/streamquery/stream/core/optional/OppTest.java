@@ -30,6 +30,7 @@ import java.security.KeyManagementException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 /**
@@ -46,6 +47,7 @@ class OppTest {
 
         // blank相对于ofNullable考虑了字符串为空串的情况
         // return Opp.of(value).filter(str -> !str.toString().trim().isEmpty());
+        //所以,String类型的话, 可以用ofStr()这个方法, 避免空字符串的情况
         final String hutool = Opp.ofStr("").orElse("hutool");
         System.out.println("hutool = " + hutool);
         Assertions.assertEquals("hutool", hutool);
@@ -56,6 +58,7 @@ class OppTest {
     void getTest() {
         // 和原版Optional有区别的是，get不会抛出NoSuchElementException
         // 如果想使用原版Optional中的get这样，获取一个一定不为空的值，则应该使用orElseThrow
+        //get()方法:  return this.value;  所以返回了null,而不是npe
         final Object opp = Opp.empty().get();
         Assertions.assertNull(opp);
         final String oppGetMap = Opp.empty().get((data) -> "hutool");
@@ -63,7 +66,14 @@ class OppTest {
         Assertions.assertNull(oppGetMap);
 
 
-        //试一试原版
+        User user = new User();
+        user.setUsername("ys");
+        //还可以这样用,get()方法传入function函数入参, 返回执行的结果
+        //不过不太实用,这样的话,后面就不能跟orElse之类的方法了
+        String userName = Opp.of(user).get(User::getUsername);
+        System.out.println("userName = " + userName);
+
+        //试一试原版  会报空指针异常
         Object o = Optional.empty().get();
     }
 
@@ -71,8 +81,14 @@ class OppTest {
     void isEmptyTest() {
         // 这是jdk11 Optional中的新函数，直接照搬了过来
         // 判断包裹内元素是否为空，注意并没有判断空字符串的情况
+        //isEmpty() --> return value == null;  是直接判断的value的值,所以如果是空字符串或者空对象,也会返回false
         final boolean isEmpty = Opp.empty().isEmpty();
+        System.out.println("isEmpty = " + isEmpty);
         Assertions.assertTrue(isEmpty);
+
+        System.out.println("Opp.of(\"\").isEmpty() = " + Opp.of("").isEmpty());
+        System.out.println("Opp.of(new User()).isEmpty() = " + Opp.of(new User()).isEmpty());
+
     }
 
     @Test
@@ -95,6 +111,16 @@ class OppTest {
                         .get();
         Assertions.assertEquals("hutool", name);
         System.out.println("name = " + name);
+
+
+        //不能修改基本数据类型的值, 但是可以修改引用类型的属性, 比如user对象的姓名
+        User oneUser = User.getOneUser();
+        System.out.println("oneUser = " + oneUser);
+        //peek() -->
+        //action.accept(value);
+        //    return this;
+        Opp.of(oneUser).peek(u -> u.setUsername("yj")).peek(u -> u.setNickname("jy"));
+        System.out.println("oneUser = " + oneUser);
     }
 
     @Test
@@ -110,12 +136,6 @@ class OppTest {
                         u -> Assertions.assertEquals("hutool", u.getUsername()));
         Assertions.assertEquals("hutool", user.getNickname());
         Assertions.assertEquals("hutool", user.getUsername());
-
-        Opp.of("you")
-                .peeks(
-                        user::setUsername,
-                        user::setNickname
-                );
 
 
         // 注意，传入的lambda中，对包裹内的元素执行赋值操作并不会影响到原来的元素,这是java语言的特性。。。
@@ -134,6 +154,18 @@ class OppTest {
         Opp.of("hutool").peeks().peeks().peeks();
         Opp.empty().peeks(i -> {
         });
+
+        //最有用的例子
+        //peeks() -->   return peek(Stream.of(actions).reduce(Consumer::andThen).orElseGet(() -> o -> {}));
+        Consumer<User> setUserNameConsumer = u -> {
+            if (null != u.getUsername()) {
+                u.setUsername("afterPeeks");
+                u.setNickname("afterPeeks");
+            }
+        };
+        User user1 = Opp.of(User.getOneUser()).peeks(setUserNameConsumer).orElseGet(User::new);
+        System.out.println("user1 = " + user1);
+
     }
 
     @Test
@@ -552,5 +584,11 @@ class OppTest {
     static class User {
         private String username;
         private String nickname;
+
+
+        //获取一个user对象的静态方法
+        public static User getOneUser() {
+            return User.builder().username("ys").nickname("theShy").build();
+        }
     }
 }
