@@ -20,6 +20,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.experimental.Tolerate;
 import org.dromara.streamquery.stream.core.collection.Maps;
+import org.dromara.streamquery.stream.core.optional.Opp;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -29,6 +30,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -55,6 +57,10 @@ class SteamTest {
 
   @Test
   void testSplit() {
+    List<String> list1 = Steam.split(null, ",").toList();
+    System.out.println("list1 = " + list1);
+
+
     List<Integer> list = Steam.split("1,2,3", ",").map(Integer::valueOf).toList();
     Assertions.assertEquals(asList(1, 2, 3), list);
   }
@@ -67,6 +73,15 @@ class SteamTest {
 
   @Test
   void testToCollection() {
+    List<Integer> list02 = asList(1, 2, 3);
+    Steam<Integer> get = Opp.of(list02)
+            .map(Iterable::spliterator)
+            .map(spliterator -> StreamSupport.stream(spliterator, false))
+            .map(Steam::new)
+            .orElse(Steam.of(1));
+
+
+
     List<Integer> list = asList(1, 2, 3);
     List<String> toCollection = Steam.of(list).map(String::valueOf).toCollection(LinkedList::new);
     List<String> toCollection2 = Steam.of(list).map(String::valueOf).toCollection(ArrayList::new);
@@ -76,6 +91,11 @@ class SteamTest {
   @Test
   void testToList() {
     List<Integer> list = asList(1, 2, 3);
+    //return Opp.of(iterable)
+    //        .map(Iterable::spliterator)
+    //        .map(spliterator -> StreamSupport.stream(spliterator, parallel))
+    //        .map(Steam::new)
+    //        .orElseGet(Steam::empty);
     List<String> toList = Steam.of(list).map(String::valueOf).toList();
     Assertions.assertEquals(asList("1", "2", "3"), toList);
   }
