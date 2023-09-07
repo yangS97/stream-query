@@ -40,14 +40,14 @@ import java.util.stream.Stream;
 class OppTest {
 
     @Test
-    void blankTest() {
+    void strBlankTest() {
         //无法排除空字符串
         String s = Optional.ofNullable("").orElse("233");
         System.out.println("s = " + s);
 
         // blank相对于ofNullable考虑了字符串为空串的情况
+        //所以,String类型的话, 可以用ofStr()这个方法, 避免空字符串的情况  用的比较少
         // return Opp.of(value).filter(str -> !str.toString().trim().isEmpty());
-        //所以,String类型的话, 可以用ofStr()这个方法, 避免空字符串的情况
         final String hutool = Opp.ofStr("").orElse("hutool");
         System.out.println("hutool = " + hutool);
         Assertions.assertEquals("hutool", hutool);
@@ -163,6 +163,7 @@ class OppTest {
                 u.setNickname("afterPeeks");
             }
         };
+        //为了保持代码简洁,peeks()里面可以传入方法, 而不是杂乱的代码块
         User user1 = Opp.of(User.getOneUser()).peeks(setUserNameConsumer).orElseGet(User::new);
         System.out.println("user1 = " + user1);
 
@@ -172,6 +173,11 @@ class OppTest {
     void orTest() {
         // 这是jdk9 Optional中的新函数，直接照搬了过来
         // 给一个替代的Opp   这个好像也挺管用的
+        //if (isPresent()) {
+        //      return this;
+        //    } else {
+        //      @SuppressWarnings("unchecked")
+        //      final Opp<T> r = (Opp<T>) supplier.get();
         final String str =
                 Opp.<String>empty()
                         .or(() -> Opp.of("Hello hutool!"))
@@ -202,6 +208,9 @@ class OppTest {
     @Test
     void orElseThrowTest() {
         Opp<Object> opp = Opp.empty();
+
+        opp.orElseThrow(RuntimeException::new);
+
         // 获取一个不可能为空的值，否则抛出NoSuchElementException异常
         Assertions.assertThrows(NoSuchElementException.class, opp::orElseThrow);
         // 获取一个不可能为空的值，否则抛出自定义异常
@@ -225,14 +234,22 @@ class OppTest {
         Assertions.assertNull(user.getNickname());
     }
 
+    /**
+     * 很实用, 减少一步对集合的empty判空
+     */
     @Test
-    void emptyTest() {
+    void ofCollTest() {
         // 以前，输入一个CollectionUtil感觉要命，类似前缀的类一大堆，代码补全形同虚设(在项目中起码要输入完CollectionUtil才能在第一个调出这个函数)
-        // 关键它还很常用，判空和判空集合真的太常用了...
+        // 关键它还很常用，判空和判空集合真的太常用了...   可以这个真的很实用
+        final List<String> now =
+                Opp.of(Collections.<String>emptyList())
+                        .orElseGet(() -> Collections.singletonList("hutool"));
+        System.out.println("now = " + now);
         final List<String> past =
                 Opp.of(Collections.<String>emptyList())
                         .filter(l -> !l.isEmpty())
                         .orElseGet(() -> Collections.singletonList("hutool"));
+        System.out.println("past = " + past);
         // 现在，一个empty搞定
         final List<String> hutool =
                 Opp.ofColl(Collections.<String>emptyList())
@@ -242,6 +259,10 @@ class OppTest {
         Assertions.assertTrue(Opp.ofColl(Arrays.asList(null, null, null)).isEmpty());
     }
 
+    /**
+     * peek/peeks是consumer消费
+     * flattedMap是Function带返回  可以灵活使用   跟map没有区别??
+     */
     @SuppressWarnings({"MismatchedQueryAndUpdateOfCollection", "ConstantConditions"})
     @Test
     void failOrElseTest() {
@@ -252,7 +273,11 @@ class OppTest {
         final List<String> last = null;
         final String npeSituation =
                 Opp.ofColl(last).flattedMap(l -> l.stream().findFirst()).orElse("hutool");
-        final String indexOutSituation = Opp.ofColl(last).map(l -> l.get(0)).orElse("hutool");
+        final String indexOutSituation =
+                Opp.ofColl(last).map(l -> l.get(0)).orElse("hutool");
+
+
+
 
         // 现在代码整洁度降低，但可读性up，如果再人说看不懂这代码...
         final String npe = Opp.ofTry(() -> last.get(0)).failOrElse("hutool");
@@ -512,9 +537,17 @@ class OppTest {
 
     @Test
     void testToOptional() {
-        //这个有什么意义?  Opp.ofStr本来就是要返回optional对象
+        //这个有什么意义???  Opp.ofStr本来就是要返回optional对象    第二遍也没有看出来意义: Opp对象-> Optional对象
         final Optional<String> optional = Opp.ofStr("stream-query").toOptional();
         optional.ifPresent(s -> Assertions.assertEquals(s, "stream-query"));
+
+        ArrayList<String> stringList = new ArrayList<>();
+        String s = Opp.of(stringList)
+                .flattedMap(word -> word.stream().findFirst())
+                .toOptional()
+                .get();
+        System.out.println("s = " + s);
+
     }
 
     @Test
@@ -545,6 +578,7 @@ class OppTest {
     void testOrElseRun() {
         final AtomicReference<String> oppStrNull = new AtomicReference<>("");
         Opp.ofStr(oppStrNull.get())
+                //执行的是consumer消费者的action
                 .orElseRun(
                         () -> {
                             oppStrNull.set("stream-query");
