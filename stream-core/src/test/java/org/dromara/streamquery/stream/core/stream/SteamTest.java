@@ -41,6 +41,10 @@ import static java.util.Collections.singletonList;
  */
 class SteamTest {
 
+  private static final List<Author> authors = getAuthors();
+  private static final Stream<Author> as = getAuthors().stream();
+
+
   @Test
   void testBuilder() {
     List<Integer> list = Steam.<Integer>builder().add(1).add(2).add(3).build().toList();
@@ -59,6 +63,21 @@ class SteamTest {
     Assertions.assertEquals(3, Steam.of(1, 2, 3).count());
     Assertions.assertEquals(3, Steam.of(Stream.builder().add(1).add(2).add(3).build()).count());
     Assertions.assertEquals(0, Steam.of(Maps.of()).count());
+
+
+    System.out.println("Steam.of(authors).count() = " + Steam.of(authors).count());
+
+    Author author = Steam.of(authors).findLast(au -> au.getAge() > 14).orElse(new Author());
+    System.out.println("author = " + author);
+    System.out.println("==================================");
+    Map<Integer, Author> zip = Steam.of(authors)
+            .map(Author::getAge)
+            .toZip(authors);
+    System.out.println("zip = " + zip);
+
+    Map<Integer, Author> zip02 = Steam.of(authors).toMap(au -> au.getAge(), Function.identity());
+    System.out.println("zip02 = " + zip02);
+
   }
 
   @Test
@@ -97,6 +116,10 @@ class SteamTest {
     List<String> toCollection = Steam.of(list).map(String::valueOf).toCollection(LinkedList::new);
     List<String> toCollection2 = Steam.of(list).map(String::valueOf).toCollection(ArrayList::new);
     Assertions.assertEquals(asList("1", "2", "3"), toCollection2);
+
+
+    HashSet<Author> collection = Steam.of(authors).toCollection(HashSet::new);
+    System.out.println("collection = " + collection);
   }
 
   @Test
@@ -233,6 +256,10 @@ class SteamTest {
           }
         },
         group);
+
+    Map<Integer, List<Author>> ageGroup = Steam.of(authors).group(Author::getAge);
+    System.out.println("ageGroup = " + ageGroup);
+
   }
 
   /**
@@ -256,6 +283,10 @@ class SteamTest {
     Map<Boolean, Set<Integer>> map2 = Steam.of(1, 1, 2, 3).partition(predicate, HashSet::new);
     Assertions.assertEquals(2, map2.get(Boolean.TRUE).size());
     Assertions.assertEquals(1, map2.get(Boolean.FALSE).size());
+
+
+    Map<Boolean, List<Author>> partition = Steam.of(authors).partition(author -> author.getAge() > 32);
+    System.out.println("partition = " + partition);
   }
 
   /**
@@ -440,6 +471,7 @@ class SteamTest {
 
   /**
    * nonNull  这个小方法还是挺实用的
+   * 过滤指定条件为空的流中元素
    */
   @Test
   void testNonNullMapping() {
@@ -455,11 +487,20 @@ class SteamTest {
             .nonNull(Student::getAge)
             .toList();
     Assertions.assertEquals(original, nonNull);
+    System.out.println("nonNull = " + nonNull);
   }
 
+  /**
+   * 给定元素组成的流与当前流合并, 并置于尾部，成为新的流
+   * eg : 123.unshift 23 --> 12323
+   *
+   *
+   * return Steam.concat(this.stream, Stream.of(obj));
+   */
   @Test
   void testPush() {
     List<Integer> list = asList(1, 2);
+    //return Steam.concat(this.stream, Stream.of(obj));
     List<Integer> push = Steam.of(list).push(3).toList();
     Assertions.assertEquals(asList(1, 2, 3), push);
 
@@ -473,6 +514,11 @@ class SteamTest {
     Assertions.assertFalse(Steam.of(1, 2, 3).parallel(false).isParallel());
   }
 
+  /**
+   * 给定元素组成的流与当前流合并, 并置于头部，成为新的流
+   * eg : 123.unshift 23  -->  23123
+   *
+   */
   @Test
   void testUnshift() {
     List<Integer> list = asList(2, 3);
@@ -498,6 +544,9 @@ class SteamTest {
     Assertions.assertFalse(Steam.of(list).at(-4).isPresent());
   }
 
+  /**
+   *  对流进行操作, 添加或者删除元素
+   */
   @Test
   void testSplice() {
     List<Integer> list = asList(1, 2, 3);
@@ -533,6 +582,11 @@ class SteamTest {
     Integer idx = Steam.of(list).findFirstIdx(Objects::nonNull);
     Assertions.assertEquals(1, idx);
     Assertions.assertNotEquals(-1, Steam.of(list).parallel().findFirstIdx(Objects::nonNull));
+
+
+    //获取年龄大于18的第一个作者的索引
+    Integer firstIdx = Steam.of(authors).findFirstIdx(author -> author.getAge() > 18);
+    System.out.println("firstIdx = " + firstIdx);
   }
 
   @Test
@@ -546,11 +600,19 @@ class SteamTest {
   @Test
   void testFindLastIdx() {
     List<Integer> list = asList(1, null, 3);
+    //return this.mapIdx((e, i) -> Maps.entry(i, e))
+    //        .filter(e -> predicate.test(e.getValue()))
+    //        .findLast()
+    //        .map(Map.Entry::getKey)
+    //        .orElse(NOT_FOUND_INDEX);
     Integer idx = Steam.of(list).findLastIdx(Objects::nonNull);
     Assertions.assertEquals(2, idx);
     Assertions.assertNotEquals(-1, Steam.of(list).parallel().findLastIdx(Objects::nonNull));
   }
 
+  /**
+   * 反向自然排序,   1,3,2 --> 3,2,1
+   */
   @Test
   void testReverse() {
     List<Integer> list = asList(1, 3, 2);
@@ -584,17 +646,22 @@ class SteamTest {
    * splitList 实际调用
    * return split(batchSize).map(Steam::toList);
    *
-   * 等于对split方法的进一步封装
+   * 等于对split方法的进一步封装   感觉实用性也不强
    */
   @Test
   void testSplitList() {
     List<Integer> list = asList(1, 2, 3, 4, 5);
     List<List<Integer>> lists = Steam.of(list).splitList(2).toList();
     Assertions.assertEquals(asList(asList(1, 2), asList(3, 4), singletonList(5)), lists);
+
+
+    List<List<Author>> authorsList = Steam.of(authors).splitList(2).toList();
+    System.out.println("authorsList = " + authorsList);
+
   }
 
   /**
-   * log应该不怎么用的上吧
+   * log应该不怎么用的上吧   实用性不强
    */
   @Test
   void testLog() {
@@ -604,4 +671,39 @@ class SteamTest {
     List<Integer> logList = Steam.of(list).map(i -> i + 1).log().toList();
     System.out.println("logList = " + logList);
   }
+
+
+
+  private static List<Author> getAuthors() {
+    //数据初始化
+    Author author = new Author(1L, "蒙多", 33, "一个从菜刀中明悟哲理的祖安人", null);
+    Author author2 = new Author(2L, "亚拉索", 15, "狂风也追逐不上他的思考速度", null);
+    Author author3 = new Author(3L, "易", 14, "是这个世界在限制他的思维", null);
+    Author author4 = new Author(3L, "易", 14, "是这个世界在限制他的思维", null);
+
+    //书籍列表
+    List<Book> books1 = new ArrayList<>();
+    List<Book> books2 = new ArrayList<>();
+    List<Book> books3 = new ArrayList<>();
+
+    books1.add(new Book(1L, "刀的两侧是光明与黑暗", "哲学,爱情", 88, "用一把刀划分了爱恨"));
+    books1.add(new Book(2L, "一个人不能死在同一把刀下", "个人成长,爱情", 99, "讲述如何从失败中明悟真理"));
+
+    books2.add(new Book(3L, "那风吹不到的地方", "哲学", 85, "带你用思维去领略世界的尽头"));
+    books2.add(new Book(3L, "那风吹不到的地方", "哲学", 85, "带你用思维去领略世界的尽头"));
+    books2.add(new Book(4L, "吹或不吹", "爱情,个人传记", 56, "一个哲学家的恋爱观注定很难把他所在的时代理解"));
+
+    books3.add(new Book(5L, "你的剑就是我的剑", "爱情", 56, "无法想象一个武者能对他的伴侣这么的宽容"));
+    books3.add(new Book(6L, "风与剑", "个人传记", 100, "两个哲学家灵魂和肉体的碰撞会激起怎么样的火花呢？"));
+    books3.add(new Book(6L, "风与剑", "个人传记", 100, "两个哲学家灵魂和肉体的碰撞会激起怎么样的火花呢？"));
+
+    author.setBooks(books1);
+    author2.setBooks(books2);
+    author3.setBooks(books3);
+    author4.setBooks(books3);
+
+    List<Author> authorList = new ArrayList<>(Arrays.asList(author, author2, author3, author4));
+    return authorList;
+  }
+
 }
