@@ -91,17 +91,20 @@ class OppTest {
 
     }
 
-    @Test
-    void peekTest() {
-        final User user = new User();
-        // 相当于ifPresent的链式调用
-        // of()方法 =   Opp<T>
-        // value="hutool"
-        // throwable=null
-        Opp.of("hutool").peek(user::setUsername).peek(user::setNickname);
-        Assertions.assertEquals("hutool", user.getNickname());
-        Assertions.assertEquals("hutool", user.getUsername());
-        System.out.println("user = " + user);
+  @Test
+  void foldTest() {
+    final Opp<String> opp = Opp.ofStr("     ");
+    final String fold = opp.fold(String::toUpperCase, () -> "hutool");
+    Assertions.assertEquals("hutool", fold);
+  }
+
+  @Test
+  void peekTest() {
+    final User user = new User();
+    // 相当于ifPresent的链式调用
+    Opp.of("hutool").peek(user::setUsername).peek(user::setNickname);
+    Assertions.assertEquals("hutool", user.getNickname());
+    Assertions.assertEquals("hutool", user.getUsername());
 
         // 注意，传入的lambda中，对包裹内的元素执行赋值操作并不会影响到原来的元素
         final String name =
@@ -574,24 +577,14 @@ class OppTest {
         Assertions.assertFalse(Opp.of(1).is(i -> null));
     }
 
-    @Test
-    void testOrElseRun() {
-        final AtomicReference<String> oppStrNull = new AtomicReference<>("");
-        Opp.ofStr(oppStrNull.get())
-                //执行的是consumer消费者的action
-                .orElseRun(
-                        () -> {
-                            oppStrNull.set("stream-query");
-                        });
-        final String elseRun =
-                Opp.ofStr(oppStrNull.get())
-                        .orElseRun(
-                                () -> {
-                                    oppStrNull.set("");
-                                });
-        Assertions.assertEquals(oppStrNull.get(), "stream-query");
-        Assertions.assertEquals(elseRun, "stream-query");
-    }
+  @Test
+  void testOrElseRun() {
+    final AtomicReference<String> oppStrNull = new AtomicReference<>("");
+    Opp.ofStr(oppStrNull.get()).orElseRun(() -> oppStrNull.set("stream-query"));
+    final String elseRun = Opp.ofStr(oppStrNull.get()).orElseRun(() -> oppStrNull.set(""));
+    Assertions.assertEquals(oppStrNull.get(), "stream-query");
+    Assertions.assertEquals(elseRun, "stream-query");
+  }
 
     @Test
     void testIfPresent() {

@@ -16,6 +16,7 @@
  */
 package org.dromara.streamquery.stream.core.bean;
 
+import org.dromara.streamquery.stream.core.clazz.ClassHelper;
 import org.dromara.streamquery.stream.core.lambda.LambdaExecutable;
 import org.dromara.streamquery.stream.core.lambda.LambdaHelper;
 import org.dromara.streamquery.stream.core.lambda.function.SerFunc;
@@ -23,11 +24,12 @@ import org.dromara.streamquery.stream.core.optional.Opp;
 import org.dromara.streamquery.stream.core.reflect.ReflectHelper;
 
 import java.io.Serializable;
-import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
+
+import static org.dromara.streamquery.stream.core.clazz.ClassHelper.cast;
 
 /**
  * BeanHelper class.
@@ -50,8 +52,8 @@ public class BeanHelper {
   /**
    * getPropertyName.
    *
-   * @param getterOrSetter a {@link java.lang.String} object
-   * @return a {@link java.lang.String} object
+   * @param getterOrSetter a {@link String} object
+   * @return a {@link String} object
    */
   public static String getPropertyName(String getterOrSetter) {
     String originProperty = null;
@@ -71,7 +73,7 @@ public class BeanHelper {
   /**
    * isGetter.
    *
-   * @param methodName a {@link java.lang.String} object
+   * @param methodName a {@link String} object
    * @return a boolean
    */
   public static boolean isGetter(String methodName) {
@@ -82,7 +84,7 @@ public class BeanHelper {
   /**
    * isGetterBoolean.
    *
-   * @param methodName a {@link java.lang.String} object
+   * @param methodName a {@link String} object
    * @return a boolean
    */
   public static boolean isGetterBoolean(String methodName) {
@@ -92,7 +94,7 @@ public class BeanHelper {
   /**
    * isSetter.
    *
-   * @param methodName a {@link java.lang.String} object
+   * @param methodName a {@link String} object
    * @return a boolean
    */
   public static boolean isSetter(String methodName) {
@@ -127,15 +129,36 @@ public class BeanHelper {
    * @param <T> 对象类型
    */
   public static <T, R> R copyProperties(T source, R target) {
+    return copyProperties(source, target, CopyOption.GLOBAL_COPY_OPTION);
+  }
+
+  public static <T, R> R copyProperties(T source, Class<R> targetType) {
+    return copyProperties(source, targetType, CopyOption.GLOBAL_COPY_OPTION);
+  }
+
+  public static <T, R> R copyProperties(T source, Class<R> targetType, CopyOption copyOption) {
+    if (Objects.isNull(source)) {
+      return null;
+    }
+    final Class<T> sourceType = cast(source.getClass());
+    final Converter<T, R> classConverter = copyOption.getConverter(sourceType, targetType);
+    if (Objects.nonNull(classConverter)) {
+      return classConverter.convert(source);
+    }
+    R target = ReflectHelper.newInstance(targetType);
+    return copyProperties(source, target, copyOption);
+  }
+
+  public static <T, R> R copyProperties(T source, R target, CopyOption copyOption) {
     if (source == null || target == null) {
       return target;
     }
 
-    Class<T> sourceType = SerFunc.<Class<?>, Class<T>>cast().apply(source.getClass());
+    Class<T> sourceType = cast(source.getClass());
     Map<String, Map.Entry<SerFunc<T, Object>, Serializable>> sourcePropertyGetterSetterMap =
         LambdaHelper.getPropertyGetterSetterMap(sourceType);
 
-    Class<R> targetType = SerFunc.<Class<?>, Class<R>>cast().apply(target.getClass());
+    Class<R> targetType = cast(target.getClass());
     Map<String, Map.Entry<SerFunc<R, Object>, Serializable>> targetPropertyGetterSetterMap =
         LambdaHelper.getPropertyGetterSetterMap(targetType);
 
@@ -146,36 +169,45 @@ public class BeanHelper {
       Map.Entry<SerFunc<R, Object>, Serializable> targetGetterSetter =
           targetPropertyGetterSetterMap.get(property);
 
-      if (targetGetterSetter != null) {
-        SerFunc<T, Object> sourceGetter = sourceGetterSetter.getKey();
-        SerFunc<R, Object> targetGetter = targetGetterSetter.getKey();
+      if (sourceGetterSetter == null || targetGetterSetter == null) {
+        continue;
+      }
+      SerFunc<T, Object> sourceGetter = sourceGetterSetter.getKey();
+      SerFunc<R, Object> targetGetter = targetGetterSetter.getKey();
 
-        LambdaExecutable sourceGetterLambda = LambdaHelper.resolve(sourceGetter);
-        LambdaExecutable targetGetterLambda = LambdaHelper.resolve(targetGetter);
-
-        if (!Opp.of(sourceGetterLambda.getReturnType())
-            .map(Type::getTypeName)
-            .equals(Opp.of(targetGetterLambda.getReturnType()).map(Type::getTypeName))) {
-          continue;
+      LambdaExecutable sourceGetterLambda = LambdaHelper.resolve(sourceGetter);
+      LambdaExecutable targetGetterLambda = LambdaHelper.resolve(targetGetter);
+      Object value = sourceGetter.apply(source);
+      Converter<Object, Object> converter =
+          copyOption.getConverter(
+              (Class<?>) sourceGetterLambda.getReturnType(),
+              (Class<?>) targetGetterLambda.getReturnType());
+      if (Objects.isNull(converter)
+          && Objects.equals(
+              sourceGetterLambda.getReturnType(), targetGetterLambda.getReturnType())) {
+        converter = CopyOption.NO_OP_CONVERTER;
+      }
+      try {
+        if (Objects.isNull(converter)) {
+          throw new ConvertFailException(
+              String.format(
+                  "no converter from %s to %s",
+                  sourceGetterLambda.getReturnType(), targetGetterLambda.getReturnType()));
         }
-
-        Object value = sourceGetter.apply(source);
+        value = converter.convert(value);
         Serializable setter = targetGetterSetter.getValue();
         if (BiConsumer.class.isAssignableFrom(setter.getClass())) {
-          SerFunc.<Serializable, BiConsumer<R, Object>>cast().apply(setter).accept(target, value);
-        } else {
-          SerFunc.<Serializable, BiFunction<R, Object, R>>cast().apply(setter).apply(target, value);
+          ClassHelper.<BiConsumer<R, Object>>cast(setter).accept(target, value);
+        } else if (BiFunction.class.isAssignableFrom(setter.getClass())) {
+          ClassHelper.<BiFunction<R, Object, R>>cast(setter).apply(target, value);
         }
+      } catch (Exception e) {
+        if (copyOption.isIgnoreError()) {
+          continue;
+        }
+        throw new ConvertFailException(e);
       }
     }
     return target;
-  }
-
-  public static <T, R> R copyProperties(T source, Class<R> targetType) {
-    R target = ReflectHelper.newInstance(targetType);
-    if (Objects.isNull(source)) {
-      return target;
-    }
-    return copyProperties(source, target);
   }
 }
