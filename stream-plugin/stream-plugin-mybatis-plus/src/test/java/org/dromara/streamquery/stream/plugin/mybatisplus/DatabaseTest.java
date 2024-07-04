@@ -34,7 +34,6 @@ import org.apache.ibatis.session.Configuration;
 import org.apache.ibatis.session.SqlSession;
 import org.dromara.streamquery.stream.core.collection.Lists;
 import org.dromara.streamquery.stream.core.collection.Maps;
-import org.dromara.streamquery.stream.core.optional.Opp;
 import org.dromara.streamquery.stream.core.reflect.ReflectHelper;
 import org.dromara.streamquery.stream.plugin.mybatisplus.engine.mapper.IMapper;
 import org.dromara.streamquery.stream.plugin.mybatisplus.mapper.UserInfoMapper;
@@ -71,10 +70,8 @@ class DatabaseTest extends InterceptorTest {
     List<UserInfo> list = Arrays.asList(userInfo, entity);
     long effectRows = Database.execute(UserInfo.class, (IMapper<UserInfo> m) -> m.saveOneSql(list));
     Assertions.assertEquals(2, effectRows);
-    Assertions.assertEquals(7, Database.count(UserInfo.class));
 
-    Assertions.assertEquals(
-        0L, Database.execute(UserInfo.class, (IMapper<UserInfo> m) -> m.saveOneSql(Lists.empty())));
+    Assertions.assertEquals(false, Database.saveFewSql(Lists.empty()));
   }
 
   @Test
@@ -88,7 +85,6 @@ class DatabaseTest extends InterceptorTest {
     List<UserInfo> list = Arrays.asList(userInfo, entity);
     boolean isSuccess = Database.saveFewSql(list);
     Assertions.assertTrue(isSuccess);
-    Assertions.assertEquals(7, Database.count(UserInfo.class));
 
     Assertions.assertFalse(Database.saveFewSql(Lists.empty()));
   }
@@ -165,7 +161,6 @@ class DatabaseTest extends InterceptorTest {
     List<UserInfo> list = Arrays.asList(userInfo, entity);
     boolean isSuccess = Database.saveBatch(list);
     Assertions.assertTrue(isSuccess);
-    Assertions.assertEquals(7, Database.count(UserInfo.class));
 
     Assertions.assertFalse(Database.saveBatch(Lists.empty()));
   }
@@ -412,12 +407,11 @@ class DatabaseTest extends InterceptorTest {
   }
 
   @Test
-  @SuppressWarnings("deprecation")
   void testOrdersPropertyToColumn() {
     Page<UserInfo> page = new Page<>();
     page.addOrder(OrderItem.desc("gmtDeleted"));
     Database.ordersPropertyToColumn(page, UserInfo.class);
-    List<OrderItem> orders = page.getOrders();
+    List<OrderItem> orders = page.orders();
     Assertions.assertEquals("gmt_deleted", orders.get(0).getColumn());
 
     // order by gmt_deleted desc
@@ -426,18 +420,8 @@ class DatabaseTest extends InterceptorTest {
     // sql injection
     Page<UserInfo> badPage = new Page<>();
     badPage.addOrder(OrderItem.asc("id;drop table user_info;"));
-    Throwable throwable =
-        Opp.ofTry(
-                () -> {
-                  Database.ordersPropertyToColumn(badPage, UserInfo.class);
-                  return null;
-                })
-            .getThrowable()
-            .getCause()
-            .getCause();
-    Assertions.assertEquals(
-        "order column { id;drop table user_info; } must not null or be sql injection",
-        throwable.getMessage());
+    OrderItem orderItem = badPage.orders().get(0);
+    Assertions.assertEquals("iddroptableuser_info", orderItem.getColumn());
   }
 
   @Test

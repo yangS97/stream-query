@@ -17,18 +17,19 @@
 package org.dromara.streamquery.stream.core.reflect;
 
 import org.dromara.streamquery.stream.core.collection.Maps;
+import org.dromara.streamquery.stream.core.enums.JreEnum;
 import org.dromara.streamquery.stream.core.lambda.function.SerFunc;
 import org.dromara.streamquery.stream.core.lambda.function.SerPred;
 import org.dromara.streamquery.stream.core.optional.Opp;
 import org.dromara.streamquery.stream.core.stream.Steam;
-import org.dromara.streamquery.stream.core.stream.collector.Collective;
-import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl;
 
 import java.lang.reflect.*;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.*;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * 反射工具类
@@ -69,12 +70,24 @@ public class ReflectHelper {
     if (accessibleObject.isAccessible()) {
       return accessibleObject;
     }
-    return AccessController.doPrivileged(
-        (PrivilegedAction<$ACCESSIBLE_OBJECT>)
-            () -> {
-              accessibleObject.setAccessible(true);
-              return accessibleObject;
-            });
+
+    final Opp<$ACCESSIBLE_OBJECT> accessibleObjectOpp =
+        Opp.ofTry(
+            () ->
+                AccessController.doPrivileged(
+                    (PrivilegedAction<$ACCESSIBLE_OBJECT>)
+                        () -> {
+                          accessibleObject.setAccessible(true);
+                          return accessibleObject;
+                        }));
+
+    final String jdkVersion = JreEnum.currentVersion().name();
+    return accessibleObjectOpp.orElseThrow(
+        () ->
+            new RuntimeException(
+                "当前JDK版本"
+                    + jdkVersion
+                    + "可能进行了模块化管理，可以尝试手动修改JVM启动参数来解决，如：--add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.lang.invoke=ALL-UNNAMED"));
   }
 
   /**
@@ -295,13 +308,15 @@ public class ReflectHelper {
 
   public static Map<String, Type> getGenericMap(Type paramType) {
     Type type = resolveType(paramType);
-    if (type instanceof ParameterizedTypeImpl) {
-      ParameterizedTypeImpl ty = (ParameterizedTypeImpl) type;
-      final Class<?> rawType = ty.getRawType();
-      return Steam.of(rawType.getTypeParameters())
-          .map(Type::getTypeName)
-          .zip(Steam.of(ty.getActualTypeArguments()), Maps::entry)
-          .collect(Collective.entryToMap(LinkedHashMap::new));
+    if (type instanceof ParameterizedType) {
+      ParameterizedType pType = (ParameterizedType) type;
+      Class<?> rawType = (Class<?>) pType.getRawType();
+      Type[] actualTypeArguments = pType.getActualTypeArguments();
+      TypeVariable<?>[] typeParameters = rawType.getTypeParameters();
+
+      return IntStream.range(0, typeParameters.length)
+          .boxed()
+          .collect(Collectors.toMap(i -> typeParameters[i].getName(), i -> actualTypeArguments[i]));
     }
     return new HashMap<>();
   }
@@ -531,8 +546,7 @@ public class ReflectHelper {
         .map(Field::getName)
         .forEach(
             fieldName ->
-                LOGGER.info(
-                    () -> "field " + "" + fieldName + ": " + getFieldValue(obj, fieldName)));
+                LOGGER.info(() -> "field " + fieldName + ": " + getFieldValue(obj, fieldName)));
     LOGGER.info(() -> "no arg methods: ");
     Steam.of(getMethods(obj.getClass()))
         .map(Method::getName)

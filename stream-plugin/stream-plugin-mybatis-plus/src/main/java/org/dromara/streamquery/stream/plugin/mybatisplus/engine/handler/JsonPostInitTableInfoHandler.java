@@ -18,12 +18,8 @@ package org.dromara.streamquery.stream.plugin.mybatisplus.engine.handler;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.core.handlers.PostInitTableInfoHandler;
-import com.baomidou.mybatisplus.core.metadata.TableFieldInfo;
 import com.baomidou.mybatisplus.core.metadata.TableInfo;
-import org.apache.ibatis.mapping.ResultMap;
-import org.apache.ibatis.mapping.ResultMapping;
 import org.apache.ibatis.session.Configuration;
-import org.apache.ibatis.type.TypeHandler;
 import org.dromara.streamquery.stream.core.lambda.LambdaHelper;
 import org.dromara.streamquery.stream.core.reflect.ReflectHelper;
 import org.springframework.core.annotation.AnnotationUtils;
@@ -58,24 +54,6 @@ public class JsonPostInitTableInfoHandler implements PostInitTableInfoHandler {
         String tableNameValue = synthesizedTableName.value();
         ReflectHelper.setFieldValue(tableInfo, tableNamePropertyName, tableNameValue);
         break;
-      }
-    }
-
-    for (TableFieldInfo fieldInfo : tableInfo.getFieldList()) {
-      if (fieldInfo.getTypeHandler() == null) {
-        continue;
-      }
-      if (tableInfo.getResultMap() == null) {
-        return;
-      }
-      ResultMap resultMap = configuration.getResultMap(tableInfo.getResultMap());
-      for (ResultMapping resultMapping : resultMap.getResultMappings()) {
-        TypeHandler<?> handler = resultMapping.getTypeHandler();
-        if (handler instanceof AbstractJsonFieldHandler) {
-          AbstractJsonFieldHandler<?> typeHandler = (AbstractJsonFieldHandler<?>) handler;
-          typeHandler.setTableInfo(tableInfo);
-          typeHandler.setFieldInfo(fieldInfo);
-        }
       }
     }
   }

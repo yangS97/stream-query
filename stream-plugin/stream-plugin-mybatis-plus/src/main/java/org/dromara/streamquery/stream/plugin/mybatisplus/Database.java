@@ -28,7 +28,6 @@ import com.baomidou.mybatisplus.core.metadata.TableFieldInfo;
 import com.baomidou.mybatisplus.core.metadata.TableInfo;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.core.toolkit.*;
-import com.baomidou.mybatisplus.core.toolkit.sql.SqlInjectionUtils;
 import com.baomidou.mybatisplus.core.toolkit.support.LambdaMeta;
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -46,10 +45,7 @@ import org.apache.ibatis.type.SimpleTypeRegistry;
 import org.dromara.streamquery.stream.core.collection.Lists;
 import org.dromara.streamquery.stream.core.collection.Maps;
 import org.dromara.streamquery.stream.core.lambda.function.SerBiCons;
-import org.dromara.streamquery.stream.core.lambda.function.SerCons;
-import org.dromara.streamquery.stream.core.lambda.function.SerFunc;
 import org.dromara.streamquery.stream.core.optional.Opp;
-import org.dromara.streamquery.stream.core.optional.Sf;
 import org.dromara.streamquery.stream.core.reflect.ReflectHelper;
 import org.dromara.streamquery.stream.core.stream.Steam;
 import org.dromara.streamquery.stream.plugin.mybatisplus.engine.constant.PluginConst;
@@ -61,6 +57,8 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Stream;
+
+import static org.dromara.streamquery.stream.core.clazz.ClassHelper.cast;
 
 /**
  * 辅助类
@@ -247,7 +245,7 @@ public class Database {
     if (Objects.isNull(entity)) {
       return false;
     }
-    Class<T> entityClass = SerFunc.<Class<?>, Class<T>>cast().apply(entity.getClass());
+    Class<T> entityClass = cast(entity.getClass());
     Integer result = execute(entityClass, baseMapper -> baseMapper.insert(entity));
     return SqlHelper.retBool(result);
   }
@@ -480,7 +478,7 @@ public class Database {
     if (Objects.isNull(entity)) {
       return false;
     }
-    Class<T> entityClass = SerFunc.<Class<?>, Class<T>>cast().apply(entity.getClass());
+    Class<T> entityClass = cast(entity.getClass());
     return execute(entityClass, baseMapper -> SqlHelper.retBool(baseMapper.deleteById(entity)));
   }
 
@@ -509,7 +507,7 @@ public class Database {
     if (Objects.isNull(entity)) {
       return false;
     }
-    Class<T> entityClass = SerFunc.<Class<?>, Class<T>>cast().apply(entity.getClass());
+    Class<T> entityClass = cast(entity.getClass());
     return execute(entityClass, baseMapper -> SqlHelper.retBool(baseMapper.updateById(entity)));
   }
 
@@ -526,12 +524,12 @@ public class Database {
     if (Objects.isNull(entity) || ArrayUtils.isEmpty(updateKeys)) {
       return updateById(entity);
     }
-    Class<T> entityClass = SerFunc.<Class<?>, Class<T>>cast().apply(entity.getClass());
+    Class<T> entityClass = cast(entity.getClass());
     TableInfo tableInfo = getTableInfo(entityClass);
     T bean = ClassUtils.newInstance(entityClass);
     String keyProperty = tableInfo.getKeyProperty();
     ReflectHelper.setFieldValue(
-        bean, keyProperty, ReflectionKit.getFieldValue(entity, keyProperty));
+        bean, keyProperty, ReflectHelper.getFieldValue(entity, keyProperty));
     LambdaUpdateWrapper<T> updateWrapper =
         Stream.of(updateKeys)
             .reduce(
@@ -664,7 +662,7 @@ public class Database {
     if (Objects.isNull(entity)) {
       return false;
     }
-    Class<T> entityClass = SerFunc.<Class<?>, Class<T>>cast().apply(entity.getClass());
+    Class<T> entityClass = cast(entity.getClass());
     TableInfo tableInfo = TableInfoHelper.getTableInfo(entityClass);
     if (tableInfo == null) {
       throw ExceptionUtils.mpe(
@@ -721,11 +719,7 @@ public class Database {
       return null;
     }
     Class<T> entityClass = getEntityClass(queryWrapper);
-    if (throwEx) {
-      return execute(entityClass, baseMapper -> baseMapper.selectOne(queryWrapper));
-    }
-    return execute(
-        entityClass, baseMapper -> SqlHelper.getObject(LOG, baseMapper.selectList(queryWrapper)));
+    return execute(entityClass, baseMapper -> baseMapper.selectOne(queryWrapper, throwEx));
   }
 
   /**
@@ -1043,8 +1037,7 @@ public class Database {
                           .build())
                   .name(
                       String.format(
-                          "%s.%sMapper",
-                          PluginConst.DYNAMIC_MAPPER_PREFIX, entityClass.getSimpleName()))
+                          "%s.%sMapper", PluginConst.DYNAMIC_MAPPER_PREFIX, entityClass.getName()))
                   .make()
                   .load(ClassUtils.class.getClassLoader())
                   .getLoaded();
@@ -1213,21 +1206,11 @@ public class Database {
    * @param clazz 实体类型
    * @param <T> a T class
    */
-  @SuppressWarnings("deprecation")
   public static <T> void ordersPropertyToColumn(Page<T> page, Class<T> clazz) {
-    page.getOrders()
+    page.orders()
         .forEach(
-            SerCons.multi(
-                order ->
-                    Sf.of(order.getColumn())
-                        .takeUnless(SqlInjectionUtils::check)
-                        .require(
-                            () ->
-                                new IllegalArgumentException(
-                                    String.format(
-                                        "order column { %s } must not null or be sql injection",
-                                        order.getColumn()))),
-                order -> order.setColumn(propertyToColumn(clazz, order.getColumn()))));
+            order ->
+                Opp.of(propertyToColumn(clazz, order.getColumn())).ifPresent(order::setColumn));
   }
 
   /**
@@ -1239,8 +1222,8 @@ public class Database {
   protected static <T> Class<T> getEntityClass(Collection<T> entityList) {
     Class<T> entityClass = null;
     for (T entity : entityList) {
-      if (entity != null && entity.getClass() != null) {
-        entityClass = SerFunc.<Class<?>, Class<T>>cast().apply(entity.getClass());
+      if (entity != null) {
+        entityClass = cast(entity.getClass());
         break;
       }
     }
@@ -1263,7 +1246,7 @@ public class Database {
     if (entityClass == null) {
       T entity = queryWrapper.getEntity();
       if (entity != null) {
-        entityClass = SerFunc.<Class<?>, Class<T>>cast().apply(entity.getClass());
+        entityClass = cast(entity.getClass());
       }
     }
     if (entityClass == null) {

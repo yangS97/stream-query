@@ -33,6 +33,13 @@ public class SerArgsPredTest {
   }
 
   @Test
+  void multiAndFalseTest() {
+    SerArgsPred<String> pred =
+        SerArgsPred.multiAnd(e -> e[0].equals("foo"), e -> e[1].equals("baz"));
+    Assertions.assertFalse(pred.test("foo", "bar"));
+  }
+
+  @Test
   void multiOrTest() {
     val result =
         SerArgsPred.multiOr(e -> !e[0].equals("foo"), e -> !e[1].equals("bar")).test("foo", "bar");
@@ -54,16 +61,37 @@ public class SerArgsPredTest {
   }
 
   @Test
+  void andTest() {
+    val result1 = SerArgsPred.<String>isEqual("foo").and(e -> e[0].equals("foo")).test("foo");
+    val result2 = SerArgsPred.<String>isEqual("foo").and(e -> e[0].equals("bar")).test("foo");
+    Assertions.assertTrue(result1);
+    Assertions.assertFalse(result2);
+  }
+
+  @Test
+  void orTest() {
+    val result1 = SerArgsPred.<String>isEqual("foo").or(e -> e[0].equals("bar")).test("foo");
+    val result2 = SerArgsPred.<String>isEqual("baz").or(e -> e[0].equals("bar")).test("foo");
+    Assertions.assertTrue(result1);
+    Assertions.assertFalse(result2);
+  }
+
+  @Test
+  void isEqualNullTest() {
+    val result = SerArgsPred.isEqual((Object[]) null).test((Object[]) null);
+    Assertions.assertTrue(result);
+  }
+
+  @Test
   void throwsTest() {
     Assertions.assertThrows(
         LambdaInvokeException.class,
-        () -> {
-          SerArgsPred.isEqual("foo")
-              .or(
-                  e -> {
-                    throw new Exception("test");
-                  })
-              .test("bar");
-        });
+        () ->
+            SerArgsPred.isEqual("foo")
+                .or(
+                    e -> {
+                      throw new Exception("test");
+                    })
+                .test("bar"));
   }
 }

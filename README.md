@@ -18,7 +18,7 @@
     <a target="_blank" href='https://github.com/dromara/stream-query'>
         <img src="https://img.shields.io/github/stars/dromara/stream-query.svg?style=social" alt="github star"/>
     </a>
-</p>
+</p> 
 
 ## 📚简介
 
@@ -26,6 +26,10 @@
 
 封装`stream`和`lambda`操作进行数据返回处理
 
+## 🍺Committer卑微求职 北京、雄安求内推
+v：Cizai_
+
+<img src="https://zang-1307996497.cos.ap-beijing.myqcloud.com/undefinedWechatIMG379.jpg" alt="微信">
 ## 📝文档
 
 [中文文档](http://stream-query.dromara.org)
@@ -44,14 +48,14 @@
 <dependency>
    <groupId>org.dromara.stream-query</groupId>
    <artifactId>stream-plugin-mybatis-plus</artifactId>
-   <version>x.x.x</version>
+   <version>2.1.0</version>
 </dependency>
-        <!-- 可单独引入 -->
-        <!-- https://mvnrepository.com/artifact/org.dromara/stream-core -->
+<!-- 可单独引入 -->
+<!-- https://mvnrepository.com/artifact/org.dromara/stream-core -->
 <dependency>
   <groupId>org.dromara.stream-query</groupId>
   <artifactId>stream-core</artifactId>
-  <version>x.x.x</version>
+  <version>2.1.0</version>
 </dependency>
 ```
 
@@ -109,10 +113,10 @@ Map<Long, UserInfo> idUserMap=OneToOne.of(UserInfo::getId).in(userIds).query();
 
 ### 📚包说明
 
-| 包名            | 内容                       |
-|---------------|--------------------------|
-| stream-query  | 优雅的流式操作 |
-| stream-plugin | orm框架->使用优雅的Lambda进行对数据库进行一系列操作            |
+| 包名            | 内容                              |
+|---------------|---------------------------------|
+| stream-query  | 优雅的流式操作                         |
+| stream-plugin | orm框架 -> 使用优雅的Lambda进行对数据库进行一系列操作 |
 
 ### 🐾贡献代码的步骤
 
@@ -133,3 +137,9 @@ Map<Long, UserInfo> idUserMap=OneToOne.of(UserInfo::getId).in(userIds).query();
 
 powered by [GitHub Copilot](https://copilot.github.com)
 powered by [JetBrains](https://www.jetbrains.com)Open source license
+
+
+## 赞助商
+
+[![xiaonuo](https://plus.hutool.cn/images/ad/xiaonuo_banner.jpg)](https://www.xiaonuo.vip/?from=hutool)
+[![yinmaisoft](https://plus.hutool.cn/images/zz/yinmaisoft.jpg)](https://www.jnpfsoft.com/index.html?from=stream-query)
